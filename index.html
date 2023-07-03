@@ -1,0 +1,119 @@
+<html>
+
+<body>
+    <div>
+        <input type="file" id="image-input" accept="image/*" multiple>
+        <img id="preview"></img>
+    </div>
+
+    <script src="js/jszip.min.js"></script>
+    <script>
+
+        function download(immagini) { //{name:, dataurl:}
+          //var fileURLs = ['http://www.test.com/img.jpg',...];
+          var zip = new JSZip();
+          var count = 0;
+          console.log('array',immagini,immagini.length,immagini[0]);
+
+          for(var i=0; i<immagini.length; i++) {
+            var base64 = immagini[i].dataurl.split(',')[1];
+            var fileName = immagini[i].name;
+            //console.log(fileName,base64);
+            zip.file(fileName, base64, {base64: true});
+          }
+
+          zip.generateAsync({type:"base64"}).then(function (base64) {
+            // then trigger the download link:
+            var zipName = 'download.zip';
+            var a = document.createElement('a');
+            a.href = "data:application/zip;base64," + base64;
+            a.download = zipName;
+            a.click();
+          });
+        }
+
+        async function readFileAsDataURL(file) {
+          let result_base64 = await new Promise((resolve) => {
+            let fileReader = new FileReader();
+            fileReader.onload = (e) => resolve(fileReader.result);
+            fileReader.readAsDataURL(file);
+          });
+
+          return result_base64;
+        }
+
+        async function imageInputChange(e) {
+          if (e.target.files) {
+
+            var immagini = [];
+            for(var i=0; i<e.target.files.length; i++) {
+
+              var imageFile = e.target.files[i];
+              var result_base64 = await readFileAsDataURL(imageFile)
+
+              var img = document.createElement("img");
+              img.src = result_base64;
+              await img.decode();
+
+              //console.log(img);
+
+              //resize
+              var MAX_WIDTH = 1080;
+              var MAX_HEIGHT = 1080;
+
+              var width = img.width;
+              var height = img.height;
+
+              // Change the resizing logic
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height = height * (MAX_WIDTH / width);
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width = width * (MAX_HEIGHT / height);
+                  height = MAX_HEIGHT;
+                }
+              }
+
+              var canvas = document.createElement("canvas");
+              canvas.width = MAX_WIDTH;
+              canvas.height = MAX_HEIGHT;
+              var ctx = canvas.getContext("2d");
+              ctx.fillStyle = "white";
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              /*
+              ctx.mozImageSmoothingEnabled = false;
+              ctx.webkitImageSmoothingEnabled = false;
+              ctx.msImageSmoothingEnabled = false;
+              ctx.imageSmoothingEnabled = false;*/
+              ctx.drawImage(
+                img,
+                canvas.width / 2 - width / 2,
+                canvas.height / 2 - height / 2,
+                width,
+                height
+              );
+
+              //console.log()
+
+              // ADD
+              var dataurl = canvas.toDataURL(imageFile.type);
+              document.getElementById("preview").src = dataurl; //preview
+              immagini.push({name: imageFile.name, dataurl:dataurl});
+              //console.log('add',immagini,immagini.length);
+
+              //console.log('target result',e.target.result);
+
+            }
+            download(immagini);
+          }
+        }
+
+        let imgInput = document.getElementById('image-input');
+        imgInput.addEventListener('change', imageInputChange );
+    </script>
+</body>
+
+</html>
